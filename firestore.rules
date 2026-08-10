@@ -1,0 +1,85 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // User profile rules
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Mess group rules
+    match /groups/{groupId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && 
+        (resource.data.adminId == request.auth.uid || request.auth.uid in resource.data.moderatorIds);
+    }
+    
+    // Meal schedule rules
+    match /meals/{mealId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // Attendance and live departure status rules
+    match /attendance/{attendanceId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // Group chat messages
+    match /messages/{messageId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && resource.data.senderId == request.auth.uid;
+    }
+
+    // RSVP pre-booking rules
+    match /rsvp/{rsvpId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.resource.data.userId == request.auth.uid
+        && (resource == null || resource.data.lockedAt == null);
+    }
+
+    // Post-meal ratings rules (immutable once created)
+    match /ratings/{ratingId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // Earned achievements badges (read-only for clients, managed by Cloud Functions)
+    match /badges/{badgeId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Monthly wrapped statistics (read-only for owners, written by Cloud Functions)
+    match /wrapped/{reportId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
+    // Member nudges rules
+    match /nudges/{nudgeId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.senderId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // Complaints rules (Anonymous submissions omit userId mapping)
+    match /complaints/{complaintId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null; // Admin updates resolution status
+      allow delete: if false;
+    }
+
+    // Shared mess expenses rules
+    match /expenses/{expenseId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+  }
+}
